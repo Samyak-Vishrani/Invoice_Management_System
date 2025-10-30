@@ -1,16 +1,20 @@
-import { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
-// import api from '../../config/api';
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { LogIn, Mail, Lock } from "lucide-react";
+import { toast } from "react-toastify";
+import Cookies from "js-cookie";
+import axios from "axios";
+import { userLogin } from "../../apis/user.apis.js";
 
 const UserLogin = () => {
   const navigate = useNavigate();
+
   const location = useLocation();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -19,17 +23,32 @@ const UserLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-    //   const response = await api.post('/auth/user-login', formData);
-      const token = response.data.token;
-      localStorage.setItem('userToken', token);
-    //   setUserToken(token);
-      navigate('/user/dashboard');
+      const response = await axios.post(userLogin, formData);
+      console.log("Login successful:", response.data);
+
+      const token = response.data.data;
+      console.log("Received Token:", token);
+
+      Cookies.set("token", token, { expires: 7 });
+      Cookies.set("role", "user", { expires: 7 });
+
+      toast.success("Login Successfull!");
+      setTimeout(() => {
+        navigate("/user/dashboard");
+      }, 1500);
+
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.error("Login failed:", err);
+      toast.error(
+        "Login Failed: " +
+          (err.response?.data?.message || "Login failed")
+      );
+      setError(err.response?.data?.message || "Login failed");
+    
     } finally {
       setLoading(false);
     }
@@ -61,7 +80,9 @@ const UserLogin = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Email Address
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -77,7 +98,9 @@ const UserLogin = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -97,20 +120,26 @@ const UserLogin = () => {
               disabled={loading}
               className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
           <div className="mt-6 text-center space-y-2">
             <p className="text-gray-400">
-              Don't have an account?{' '}
-              <Link to="/user/register" className="text-blue-400 hover:text-blue-300 font-medium">
+              Don't have an account?{" "}
+              <Link
+                to="/user/register"
+                className="text-blue-400 hover:text-blue-300 font-medium"
+              >
                 Create one
               </Link>
             </p>
             <p className="text-gray-400">
-              Are you a client?{' '}
-              <Link to="/client/login" className="text-blue-400 hover:text-blue-300 font-medium">
+              Are you a client?{" "}
+              <Link
+                to="/client/login"
+                className="text-blue-400 hover:text-blue-300 font-medium"
+              >
                 Client Login
               </Link>
             </p>
@@ -119,6 +148,6 @@ const UserLogin = () => {
       </div>
     </div>
   );
-}
+};
 
 export default UserLogin;

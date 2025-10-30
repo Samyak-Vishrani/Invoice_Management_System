@@ -1,17 +1,43 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-// import api from '../../config/api';
-import { UserPlus, Mail, Lock, User, Building } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { userRegister } from "../../apis/user.apis";
+import {
+  UserPlus,
+  User,
+  Mail,
+  Lock,
+  Building,
+  MapPin,
+  Phone,
+  Receipt,
+  Landmark,
+  CreditCard,
+  Hash,
+} from "lucide-react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const UserRegister = () => {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    companyName: ''
+    name: "",
+    email: "",
+    password: "",
+    businessDetails: {
+      companyName: "",
+      address: "",
+      phone: "",
+      gstNo: "",
+      bankDetails: {
+        accountName: "",
+        accountNumber: "",
+        bankName: "",
+      },
+    },
   });
-  const [error, setError] = useState('');
+
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -20,14 +46,22 @@ const UserRegister = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      // await api.post('/auth/user-register', formData);
-      navigate('/user/login', { state: { message: 'Registration successful! Please login.' } });
+      const response = await axios.post(userRegister, formData);
+      console.log("Registration successful:", response.data);
+      toast.success("Registration Successfull!");
+      
+      setTimeout(() => {
+        navigate("/user/login", {
+          state: { message: "Registration successful! Please login." },
+        });
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      toast.error("Registration Failed: " + (err.response?.data?.message || "Registration failed"));
+      setError(err.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -41,7 +75,9 @@ const UserRegister = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
               <UserPlus className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-white mb-2">Create Account</h2>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              Create Account
+            </h2>
             <p className="text-gray-400">Register as a business user</p>
           </div>
 
@@ -51,9 +87,15 @@ const UserRegister = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6 bg-gray-800 p-6 rounded-xl shadow-lg text-white max-w-2xl mx-auto"
+          >
+            {/* Full Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Full Name
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -68,8 +110,11 @@ const UserRegister = () => {
               </div>
             </div>
 
+            {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Email
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -84,24 +129,11 @@ const UserRegister = () => {
               </div>
             </div>
 
+            {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Company Name</label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
-                <input
-                  type="text"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Acme Inc."
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -112,24 +144,159 @@ const UserRegister = () => {
                   className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="••••••••"
                   required
-                  minLength="6"
                 />
               </div>
             </div>
 
+            {/* Company Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Company Name
+              </label>
+              <div className="relative">
+                <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  name="businessDetails.companyName"
+                  value={formData.businessDetails.companyName}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="ABC Pvt. Ltd."
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Address
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  name="businessDetails.address"
+                  value={formData.businessDetails.address}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="123 Street, City, State"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Phone
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  name="businessDetails.phone"
+                  value={formData.businessDetails.phone}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="+91 9876543210"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* GST Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                GST Number
+              </label>
+              <div className="relative">
+                <Receipt className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  name="businessDetails.gstNo"
+                  value={formData.businessDetails.gstNo}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="27ABCDE1234F1Z5"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Bank Account Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Account Name
+              </label>
+              <div className="relative">
+                <Landmark className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  name="businessDetails.bankDetails.accountName"
+                  value={formData.businessDetails.bankDetails.accountName}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Bank Account Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Account Number
+              </label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  name="businessDetails.bankDetails.accountNumber"
+                  value={formData.businessDetails.bankDetails.accountNumber}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="123456789012"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Bank Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Bank Name
+              </label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  name="businessDetails.bankDetails.bankName"
+                  value={formData.businessDetails.bankDetails.bankName}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="HDFC Bank"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold text-white transition-all"
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              Register
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-400">
-              Already have an account?{' '}
-              <Link to="/user/login" className="text-blue-400 hover:text-blue-300 font-medium">
+              Already have an account?{" "}
+              <Link
+                to="/user/login"
+                className="text-blue-400 hover:text-blue-300 font-medium"
+              >
                 Sign in
               </Link>
             </p>
@@ -138,6 +305,6 @@ const UserRegister = () => {
       </div>
     </div>
   );
-}
+};
 
 export default UserRegister;

@@ -1,15 +1,19 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-// import api from '../../config/api';
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { LogIn, Mail, Lock } from "lucide-react";
+import { toast } from "react-toastify";
+import Cookies from "js-cookie";
+import axios from "axios";
+import { clientLogin } from "../../apis/user.apis.js";
+
 
 const ClientLogin = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -18,17 +22,29 @@ const ClientLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-    //   const response = await api.post('/auth/client-login', formData);
-      const token = response.data.token;
-      localStorage.setItem('clientToken', token);
-    //   setClientToken(token);
-      navigate('/client/dashboard');
+      const response = await axios.post(clientLogin, formData);
+      console.log("Login successful:", response.data);
+
+      const token = response.data.data;
+      console.log("Received Token:", token);
+
+      Cookies.set("token", token, { expires: 7 });
+      Cookies.set("role", "client", { expires: 7 });
+
+      toast.success("Login Successfull!");
+      setTimeout(() => {
+        navigate("/client/dashboard");
+      }, 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      toast.error(
+        "Login Failed: " +
+          (err.response?.data?.message || "Login failed")
+      );
+      setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -42,7 +58,9 @@ const ClientLogin = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-green-600 rounded-full mb-4">
               <LogIn className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-white mb-2">Client Portal</h2>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              Client Portal
+            </h2>
             <p className="text-gray-400">Sign in to view your invoices</p>
           </div>
 
@@ -54,7 +72,9 @@ const ClientLogin = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Email Address
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -70,7 +90,9 @@ const ClientLogin = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
@@ -90,14 +112,17 @@ const ClientLogin = () => {
               disabled={loading}
               className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-400">
-              Business user?{' '}
-              <Link to="/user/login" className="text-blue-400 hover:text-blue-300 font-medium">
+              Business user?{" "}
+              <Link
+                to="/user/login"
+                className="text-blue-400 hover:text-blue-300 font-medium"
+              >
                 User Login
               </Link>
             </p>
@@ -106,6 +131,6 @@ const ClientLogin = () => {
       </div>
     </div>
   );
-}
+};
 
 export default ClientLogin;
