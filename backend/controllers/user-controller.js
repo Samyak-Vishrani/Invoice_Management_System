@@ -1,10 +1,13 @@
 const User = require('../models/user-model');
 const Client = require('../models/client-model');
 const Invoice = require('../models/invoice-model');
+const mongoose = require('mongoose');
 
 const getUserProfile = async (req, res) => {
+    console.log("In user get profile");
     try {
         const userId = req.user.userId;
+        console.log("UserID:", userId);
 
         const user = await User.findById(userId);
         if (!user) {
@@ -32,6 +35,7 @@ const getUserProfile = async (req, res) => {
 const getUserDashboard = async (req, res) => {
     try {
         const userId = req.user.userId;
+        console.log("UserID:", userId);
 
         // Get dashboard statistics
         const [
@@ -59,14 +63,16 @@ const getUserDashboard = async (req, res) => {
                 .populate('clientId', 'name company')
                 .select('invoiceNumber totalAmount status createdAt dueDate'),
             Invoice.aggregate([
-                { $match: { userId: userId, status: 'paid' } },
+                { $match: { userId: new mongoose.Types.ObjectId(userId), status: 'paid' } },
                 { $group: { _id: null, total: { $sum: '$totalAmount' } } }
             ]),
             Invoice.aggregate([
-                { $match: { userId: userId, status: { $ne: 'paid' } } },
+                { $match: { userId: new mongoose.Types.ObjectId(userId), status: { $ne: 'paid' } } },
                 { $group: { _id: null, total: { $sum: '$remainingAmount' } } }
             ])
         ]);
+
+        console.log("Pending Amount:", pendingAmount);
 
         const dashboardData = {
             stats: {
@@ -92,6 +98,7 @@ const getUserDashboard = async (req, res) => {
         });
     }
     catch (err) {
+        console.log(err);
         return res.status(500).json({
             success: false,
             message: 'Internal Server error',
