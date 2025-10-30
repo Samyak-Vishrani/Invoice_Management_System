@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-// import api from '../../config/api';
+import { clientRegister } from "../../apis/user.apis";
 import {
   UserPlus,
   Mail,
@@ -10,6 +10,8 @@ import {
   MapPin,
   Receipt,
 } from "lucide-react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const ClientRegister = () => {
   const navigate = useNavigate();
@@ -35,19 +37,21 @@ const ClientRegister = () => {
     setLoading(true);
 
     try {
-      const userToken = localStorage.getItem("userToken");
-      if (!userToken) {
-        setError("You must be logged in as a user to register clients");
-        setLoading(false);
-        return;
-      }
+      const response = await axios.post(clientRegister, formData);
+      console.log("Client Regitration successful:", response.data);
 
-      //   await api.post('/auth/client-register', formData);
-      navigate("/user/clients", {
-        state: { message: "Client registered successfully!" },
-      });
+      toast.success("Client Registration Successfull!");
+      setTimeout(() => {
+        navigate("/user/dashboard");
+      }, 1500);
+
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      console.error("Client Regitration failed:", err);
+      toast.error(
+        "Client Regitration Failed: " + (err.response?.data?.message || "Client Regitration failed")
+      );
+      setError(err.response?.data?.message || "Client Regitration failed");
+
     } finally {
       setLoading(false);
     }
