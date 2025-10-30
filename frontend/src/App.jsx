@@ -59,7 +59,7 @@ function App() {
             element={
               <ProtectedRoute
                 element={ClientRegister}
-                allowedRoles={["user"]}
+                allowedRoles={["user", "admin"]}
               />
             }
           />
@@ -69,31 +69,31 @@ function App() {
           <Route
             path="/user/dashboard"
             element={
-              <ProtectedRoute element={UserDashboard} allowedRoles={["user"]} />
+              <ProtectedRoute element={UserDashboard} allowedRoles={["user", "admin"]} />
             }
           />
           <Route
             path="/user/profile"
             element={
-              <ProtectedRoute element={UserProfile} allowedRoles={["user"]} />
+              <ProtectedRoute element={UserProfile} allowedRoles={["user", "admin"]} />
             }
           />
           <Route
             path="/user/clients"
             element={
-              <ProtectedRoute element={AllClients} allowedRoles={["user"]} />
+              <ProtectedRoute element={AllClients} allowedRoles={["user", "admin"]} />
             }
           />
           <Route
             path="/user/invoices"
             element={
-              <ProtectedRoute element={AllInvoices} allowedRoles={["user"]} />
+              <ProtectedRoute element={AllInvoices} allowedRoles={["user", "admin"]} />
             }
           />
           <Route
             path="/user/invoices/create"
             element={
-              <ProtectedRoute element={CreateInvoice} allowedRoles={["user"]} />
+              <ProtectedRoute element={CreateInvoice} allowedRoles={["user", "admin"]} />
             }
           />
           <Route
@@ -101,14 +101,14 @@ function App() {
             element={
               <ProtectedRoute
                 element={InvoiceDetails}
-                allowedRoles={["user"]}
+                allowedRoles={["user", "admin"]}
               />
             }
           />
           <Route
             path="/user/email-logs/:invoiceId"
             element={
-              <ProtectedRoute element={EmailLogs} allowedRoles={["user"]} />
+              <ProtectedRoute element={EmailLogs} allowedRoles={["user", "admin"]} />
             }
           />
 
@@ -118,7 +118,7 @@ function App() {
             element={
               <ProtectedRoute
                 element={ClientDashboard}
-                allowedRoles={["client"]}
+                allowedRoles={["client", "admin"]}
               />
             }
           />
@@ -127,14 +127,14 @@ function App() {
             element={
               <ProtectedRoute
                 element={ClientProfile}
-                allowedRoles={["client"]}
+                allowedRoles={["client", "admin"]}
               />
             }
           />
           <Route
             path="/client/invoice/:invoiceId"
             element={
-              <ProtectedRoute element={ViewInvoice} allowedRoles={["client"]} />
+              <ProtectedRoute element={ViewInvoice} allowedRoles={["client", "admin"]} />
             }
           />
         </Routes>
