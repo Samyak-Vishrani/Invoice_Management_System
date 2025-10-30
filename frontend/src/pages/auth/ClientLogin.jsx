@@ -4,7 +4,7 @@ import { LogIn, Mail, Lock } from "lucide-react";
 import { toast } from "react-toastify";
 import Cookies from "js-cookie";
 import axios from "axios";
-import { clientLogin } from "../../apis/user.apis.js";
+import { clientLogin } from "../../apis/auth.apis.js";
 
 
 const ClientLogin = () => {

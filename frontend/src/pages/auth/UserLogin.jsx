@@ -4,7 +4,7 @@ import { LogIn, Mail, Lock } from "lucide-react";
 import { toast } from "react-toastify";
 import Cookies from "js-cookie";
 import axios from "axios";
-import { userLogin } from "../../apis/user.apis.js";
+import { userLogin } from "../../apis/auth.apis.js";
 
 const UserLogin = () => {
   const navigate = useNavigate();

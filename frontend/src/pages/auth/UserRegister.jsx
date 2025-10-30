@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { userRegister } from "../../apis/user.apis";
+import { userRegister } from "../../apis/auth.apis";
 import {
   UserPlus,
   User,
