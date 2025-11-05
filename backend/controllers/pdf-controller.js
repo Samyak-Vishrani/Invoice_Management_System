@@ -6,7 +6,7 @@ const cloudinary = require('../config/cloudinary');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-
+const streamifier = require('streamifier');
 
 const generatePDFContent = async (doc, invoice) => {
     // Header
@@ -143,7 +143,7 @@ const ensureUploadDir = () => {
 //         // Wait for PDF to be complete
 //         doc.on('end', async () => {
 //             try {
-//                 cont now = new Date();
+//                 const now = new Date();
 //                 const formattedDate = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
 //                 const pdfBuffer = Buffer.concat(chunks);
 
@@ -194,7 +194,7 @@ const ensureUploadDir = () => {
 // const downloadInvoicePDF = async (req, res) => {
 //     try {
 //         const { invoiceId } = req.params;
-
+//         console.log("Invoice ID:", invoiceId);
 //         const invoice = await Invoice.findById(invoiceId);
 
 //         if (!invoice) {
@@ -484,10 +484,95 @@ const deleteInvoicePDF = async (req, res) => {
     }
 };
 
+const generateInvoicePDFCloudinary = async (req, res) => {
+    console.log("In generate pdf cloudinary");
+
+    try {
+        const { invoiceId } = req.params;
+
+        // Get invoice with populated data
+        const invoice = await Invoice.findById(invoiceId)
+            .populate('userId', 'name email businessDetails')
+            .populate('clientId', 'name email company');
+
+        if (!invoice) {
+            return res.status(404).json({ message: 'Invoice not found' });
+        }
+
+        console.log("before pdf buffer");
+        // 🔹 EDITED: Create PDF in memory (no file path)
+        const pdfBuffer = await new Promise((resolve, reject) => {
+            const doc = new PDFDocument({ margin: 50 });
+            const chunks = [];
+
+            doc.on('data', (chunk) => chunks.push(chunk));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', reject);
+
+            // Add content to PDF (same as your generatePDFContent)
+            doc.fontSize(20).text(`Invoice #${invoice.invoiceNumber}`, { align: 'center' });
+            doc.moveDown();
+
+            doc.fontSize(12).text(`Date: ${invoice.invoiceDate.toDateString()}`);
+            doc.text(`Due Date: ${invoice.dueDate.toDateString()}`);
+            doc.text(`Client: ${invoice.clientId.company.name}`);
+            doc.text(`Client Email: ${invoice.clientId.email}`);
+            doc.text(`Amount: ₹${invoice.totalAmount}`);
+            doc.text(`Status: ${invoice.status}`);
+            doc.moveDown();
+            doc.text('Thank you for your business!', { align: 'center' });
+
+            doc.end();
+        });
+        console.log("after pdf buffer, before pdf upload");
+
+        // 🔹 EDITED: Upload PDF buffer to Cloudinary
+        const cloudinaryUpload = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    resource_type: 'raw', // important for PDFs
+                    folder: 'invoices'
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            streamifier.createReadStream(pdfBuffer).pipe(uploadStream);
+        });
+        console.log("after pdf upload");
+
+        // 🔹 EDITED: Save Cloudinary URL in invoice
+        invoice.pdfPath = cloudinaryUpload.secure_url;
+        await invoice.save();
+
+        // Log PDF generation
+        await invoice.logEmail('invoice_sent', invoice.clientId.email, {
+            pdfGenerated: true,
+            cloudinaryUrl: invoice.pdfPath
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'PDF generated and uploaded to Cloudinary successfully',
+            pdfPath: invoice.pdfPath
+        });
+
+    } catch (error) {
+        console.error('PDF generation error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error generating PDF',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     generateInvoicePDF,
     downloadInvoicePDF,
     viewInvoicePDF,
     regenerateInvoicePDF,
-    deleteInvoicePDF
+    deleteInvoicePDF,
+    generateInvoicePDFCloudinary
 }

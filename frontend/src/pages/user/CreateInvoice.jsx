@@ -1,22 +1,25 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 // import api from '../../config/api';
-import { ArrowLeft, Plus, Trash2, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, FileText } from "lucide-react";
+import Cookies from "js-cookie";
+import axios from "axios";
+import { createInv } from "../../apis/invoice.apis.js";
+import { getAllClients } from "../../apis/user.apis.js";
 
 const CreateInvoice = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState("");
+
   const [formData, setFormData] = useState({
-    client: '',
-    invoiceNumber: '',
-    issueDate: new Date().toISOString().split('T')[0],
-    dueDate: '',
-    items: [{ description: '', quantity: 1, price: 0 }],
-    notes: '',
-    status: 'draft'
+    clientId: "",
+    dueDate: "",
+    items: [],
+    terms: "",
+    notes: "",
+    discountAmount: "",
   });
 
   useEffect(() => {
@@ -25,10 +28,20 @@ const CreateInvoice = () => {
 
   const fetchClients = async () => {
     try {
-    //   const response = await api.get('/user/clients');
-      setClients(response.data);
+      const token = Cookies.get("token");
+      console.log("Token: ", token);
+
+      const response = await axios.get(getAllClients, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Clients Data:\n ", response.data);
+
+      setClients(response.data.data.clients);
     } catch (error) {
-      console.error('Error fetching clients:', error);
+      console.error("Error fetching clients:", error);
     }
   };
 
@@ -45,7 +58,7 @@ const CreateInvoice = () => {
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { description: '', quantity: 1, price: 0 }]
+      items: [...formData.items, { description: "", quantity: 1, rate: 0 }],
     });
   };
 
@@ -57,25 +70,35 @@ const CreateInvoice = () => {
   };
 
   const calculateTotal = () => {
-    return formData.items.reduce((sum, item) => {
-      return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0);
+    const subtotal = formData.items.reduce((sum, item) => {
+      return (
+        sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0)
+      );
     }, 0);
+
+    const discount = parseFloat(formData.discountAmount) || 0;
+
+    return subtotal - discount;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const invoiceData = {
-        ...formData,
-        total: calculateTotal()
-      };
-      const response = await api.post('/invoice/create', invoiceData);
-      navigate(`/user/invoices/${response.data._id}`);
+      const token = Cookies.get("token");
+      console.log("Token: ", token);
+
+      const response = await axios.post(createInv, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Invoice Created:\n ", response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create invoice');
+      setError(err.response?.data?.message || "Failed to create invoice");
     } finally {
       setLoading(false);
     }
@@ -84,7 +107,10 @@ const CreateInvoice = () => {
   return (
     <div className="min-h-screen bg-gray-900 py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link to="/user/invoices" className="inline-flex items-center text-blue-400 hover:text-blue-300 mb-6">
+        <Link
+          to="/user/invoices"
+          className="inline-flex items-center text-blue-400 hover:text-blue-300 mb-6"
+        >
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to Invoices
         </Link>
@@ -93,7 +119,9 @@ const CreateInvoice = () => {
           <div className="px-6 py-4 bg-gray-700 border-b border-gray-600">
             <div className="flex items-center space-x-3">
               <FileText className="w-6 h-6 text-blue-500" />
-              <h1 className="text-2xl font-bold text-white">Create New Invoice</h1>
+              <h1 className="text-2xl font-bold text-white">
+                Create New Invoice
+              </h1>
             </div>
           </div>
 
@@ -106,38 +134,31 @@ const CreateInvoice = () => {
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Client *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Client *
+                </label>
                 <select
-                  name="client"
-                  value={formData.client}
+                  name="clientId"
+                  value={formData.clientId}
                   onChange={handleChange}
                   className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="">Select a client</option>
+                  <option value="" disabled>
+                    Select a client
+                  </option>
                   {clients.map((client) => (
                     <option key={client._id} value={client._id}>
-                      {client.name}
+                      {client.company.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Invoice Number *</label>
-                <input
-                  type="text"
-                  name="invoiceNumber"
-                  value={formData.invoiceNumber}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="INV-001"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Issue Date *</label>
+              {/* <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Issue Date *
+                </label>
                 <input
                   type="date"
                   name="issueDate"
@@ -146,10 +167,12 @@ const CreateInvoice = () => {
                   className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
-              </div>
+              </div> */}
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Due Date *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Due Date *
+                </label>
                 <input
                   type="date"
                   name="dueDate"
@@ -161,7 +184,9 @@ const CreateInvoice = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Status
+                </label>
                 <select
                   name="status"
                   value={formData.status}
@@ -178,7 +203,9 @@ const CreateInvoice = () => {
 
             <div>
               <div className="flex items-center justify-between mb-4">
-                <label className="block text-sm font-medium text-gray-300">Invoice Items</label>
+                <label className="block text-sm font-medium text-gray-300">
+                  Invoice Items
+                </label>
                 <button
                   type="button"
                   onClick={addItem}
@@ -191,13 +218,22 @@ const CreateInvoice = () => {
 
               <div className="space-y-4">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="bg-gray-700 p-4 rounded-lg border border-gray-600">
+                  <div
+                    key={index}
+                    className="bg-gray-700 p-4 rounded-lg border border-gray-600"
+                  >
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                       <div className="md:col-span-5">
                         <input
                           type="text"
                           value={item.description}
-                          onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                          onChange={(e) =>
+                            handleItemChange(
+                              index,
+                              "description",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Item description"
                           required
@@ -206,10 +242,17 @@ const CreateInvoice = () => {
                       <div className="md:col-span-3">
                         <input
                           type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                          value={
+                            item.quantity === 0 || item.quantity === ""
+                              ? ""
+                              : item.quantity
+                          }
+                          // value={item.quantity}
+                          onChange={(e) =>
+                            handleItemChange(index, "quantity", e.target.value)
+                          }
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Qty"
+                          placeholder="Quantity"
                           min="1"
                           required
                         />
@@ -217,10 +260,15 @@ const CreateInvoice = () => {
                       <div className="md:col-span-3">
                         <input
                           type="number"
-                          value={item.price}
-                          onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                          value={
+                            item.rate === 0 || item.rate === "" ? "" : item.rate
+                          }
+                          // value={item.rate}
+                          onChange={(e) =>
+                            handleItemChange(index, "rate", e.target.value)
+                          }
                           className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Price"
+                          placeholder="rate"
                           step="0.01"
                           min="0"
                           required
@@ -239,28 +287,73 @@ const CreateInvoice = () => {
                       </div>
                     </div>
                     <div className="mt-2 text-right text-gray-300">
-                      Subtotal: ${((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2)}
+                      Subtotal: $
+                      {(
+                        (parseFloat(item.quantity) || 0) *
+                        (parseFloat(item.rate) || 0)
+                      ).toFixed(2)}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            <div className="flex justify-between items-center bg-gray-700 rounded-lg px-4 py-3 border border-gray-600">
+              <span className="text-md font-medium text-gray-300">
+                Discount Amount:
+              </span>
+
+              <div className="flex items-center">
+                <span className="text-white text-md mr-1 mr-2">$</span>
+                <input
+                  type="number"
+                  name="discountAmount"
+                  value={formData.discountAmount || ""}
+                  onChange={handleChange}
+                  className="bg-transparent text-right text-white text-lg font-semibold w-24 border border-gray-500"
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+            </div>
+
             <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-medium text-gray-300">Total Amount:</span>
-                <span className="text-2xl font-bold text-white">${calculateTotal().toFixed(2)}</span>
+                <span className="text-lg font-medium text-gray-300">
+                  Total Amount:
+                </span>
+                <span className="text-2xl font-bold text-white">
+                  ${calculateTotal().toFixed(2)}
+                </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Notes (Optional)</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Terms
+              </label>
+              <textarea
+                name="terms"
+                value={formData.terms}
+                onChange={handleChange}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Terms..."
+                rows="2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Notes (Optional)
+              </label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Additional notes or terms..."
+                placeholder="Additional notes..."
                 rows="4"
               />
             </div>
@@ -277,7 +370,7 @@ const CreateInvoice = () => {
                 disabled={loading}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creating...' : 'Create Invoice'}
+                {loading ? "Creating..." : "Create Invoice"}
               </button>
             </div>
           </form>
@@ -285,6 +378,6 @@ const CreateInvoice = () => {
       </div>
     </div>
   );
-}
+};
 
 export default CreateInvoice;

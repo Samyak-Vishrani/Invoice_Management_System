@@ -53,7 +53,7 @@ const getUserDashboard = async (req, res) => {
             Invoice.countDocuments({ userId, status: { $in: ['sent', 'viewed'] } }),
             Invoice.countDocuments({
                 userId,
-                status: { $in: ['sent', 'viewed', 'partial_paid'] },
+                status: { $in: ['sent', 'viewed', 'partial_paid', 'overdue'] },
                 dueDate: { $lt: new Date() }
             }),
             Client.countDocuments({ userId }),

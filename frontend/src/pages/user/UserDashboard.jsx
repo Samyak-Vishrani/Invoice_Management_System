@@ -286,7 +286,7 @@ const UserDashboard = () => {
                               : "bg-gray-600 text-white"
                           }`}
                         >
-                          {invoice.status}
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-gray-300">
