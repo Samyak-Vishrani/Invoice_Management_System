@@ -139,11 +139,11 @@ const getAllClients = async (req, res) => {
                 const [totalInvoices, totalAmount, paidAmount] = await Promise.all([
                     Invoice.countDocuments({ userId, clientId: client._id }),
                     Invoice.aggregate([
-                        { $match: { userId: userId, clientId: client._id } },
+                        { $match: { userId: new mongoose.Types.ObjectId(userId), clientId: new mongoose.Types.ObjectId(client._id) } },
                         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
                     ]),
                     Invoice.aggregate([
-                        { $match: { userId: userId, clientId: client._id, status: 'paid' } },
+                        { $match: { userId: new mongoose.Types.ObjectId(userId), clientId: new mongoose.Types.ObjectId(client._id), status: 'paid' } },
                         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
                     ])
                 ]);

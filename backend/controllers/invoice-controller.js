@@ -1,11 +1,12 @@
 const Invoice = require('../models/invoice-model');
 const Client = require('../models/client-model');
 const User = require('../models/user-model');
+const { sendInvoice } = require('./email-controller');
 
 // Create new invoice
 const createInvoice = async (req, res) => {
     try {
-        const { clientId, dueDate, items, notes, terms, discountAmount } = req.body;
+        const { clientId, dueDate, items, notes, terms, discountAmount, sendEmail = true } = req.body;
         const userId = req.user.userId;
 
         // Check if client exists and belongs to user
@@ -40,10 +41,49 @@ const createInvoice = async (req, res) => {
         // Populate client details for response
         await invoice.populate('clientId', 'name company');
 
+        let emailSent = false;
+        let emailError = null;
+        // Automatically send invoice email if sendEmail is true
+        if (sendEmail) {
+            try {
+                // Create mock request and response objects for email controller
+                const emailReq = {
+                    params: { invoiceId: invoice._id },
+                    body: { customMessage: 'Thank you for your business.' },
+                    user: req.user
+                };
+                
+                const emailRes = {
+                    status: function(code) {
+                        return this;
+                    },
+                    json: function(data) {
+                        console.log('Email sent:', data);
+                        return this;
+                    }
+                };
+
+                await sendInvoice(emailReq, emailRes);
+                emailSent = true;
+
+            } catch (emailError) {
+                // Don't fail the whole request if email fails
+                emailSent = false;
+                emailError = error.message;
+                console.error('Failed to send invoice email:', emailError);
+            }
+        }
+
         return res.status(201).json({
             success: true,
-            message: 'Invoice created successfully',
-            data: invoice
+            message: emailSent 
+                ? 'Invoice created successfully' 
+                : 'Invoice created successfully but email could not be sent',
+            data: invoice,
+            emailStatus: {
+                sent: emailSent,
+                error: emailError
+            }
         });
 
     } catch (error) {

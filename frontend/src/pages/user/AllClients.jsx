@@ -1,13 +1,23 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-// import api from '../../config/api';
-import { Users, Mail, Phone, MapPin, ArrowLeft, UserPlus } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Users,
+  Mail,
+  Receipt,
+  MapPin,
+  ArrowLeft,
+  UserPlus,
+  FileText,
+} from "lucide-react";
+import Cookies from "js-cookie";
+import axios from "axios";
+import { getAllClients } from "../../apis/user.apis.js";
 
 const AllClients = () => {
   const location = useLocation();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState(location.state?.message || '');
+  const [message, setMessage] = useState(location.state?.message || "");
 
   useEffect(() => {
     fetchClients();
@@ -15,19 +25,27 @@ const AllClients = () => {
 
   useEffect(() => {
     if (message) {
-      const timer = setTimeout(() => setMessage(''), 3000);
+      const timer = setTimeout(() => setMessage(""), 3000);
       return () => clearTimeout(timer);
     }
   }, [message]);
 
   const fetchClients = async () => {
     try {
-    //   const response = await api.get('/user/clients');
-      setClients(response.data);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-    } finally {
+      const token = Cookies.get("token");
+
+      const response = await axios.get(getAllClients, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Clients Data:\n ", response.data);
+
+      setClients(response.data.data.clients);
       setLoading(false);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
     }
   };
 
@@ -43,11 +61,17 @@ const AllClients = () => {
     <div className="min-h-screen bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-6">
-          <Link to="/user/dashboard" className="inline-flex items-center text-blue-400 hover:text-blue-300">
+          <Link
+            to="/user/dashboard"
+            className="inline-flex items-center text-blue-400 hover:text-blue-300"
+          >
             <ArrowLeft className="w-5 h-5 mr-2" />
             Back to Dashboard
           </Link>
-          <Link to="/client/register" className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+          <Link
+            to="/client/register"
+            className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+          >
             <UserPlus className="w-5 h-5 mr-2" />
             Add New Client
           </Link>
@@ -64,7 +88,9 @@ const AllClients = () => {
             <div className="flex items-center space-x-3">
               <Users className="w-6 h-6 text-blue-500" />
               <h1 className="text-2xl font-bold text-white">All Clients</h1>
-              <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">{clients.length}</span>
+              <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
+                {clients.length}
+              </span>
             </div>
           </div>
 
@@ -72,7 +98,10 @@ const AllClients = () => {
             <div className="px-6 py-12 text-center">
               <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-gray-400 text-lg mb-4">No clients found</p>
-              <Link to="/client/register" className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+              <Link
+                to="/client/register"
+                className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              >
                 <UserPlus className="w-5 h-5 mr-2" />
                 Add Your First Client
               </Link>
@@ -80,29 +109,93 @@ const AllClients = () => {
           ) : (
             <div className="divide-y divide-gray-700">
               {clients.map((client) => (
-                <div key={client._id} className="px-6 py-4 hover:bg-gray-750 transition-colors">
+                <div
+                  key={client._id}
+                  className="px-6 py-4 hover:bg-gray-750 transition-colors"
+                >
                   <div className="flex items-start justify-between">
-                    <div className="space-y-2 flex-1">
-                      <h3 className="text-xl font-semibold text-white">{client.name}</h3>
+                    <div className="space-y-3 flex-1">
+                      {/* Company Name */}
+                      <h3 className="text-xl font-semibold text-white">
+                        {client.company.name}
+                      </h3>
+
+                      {/* Contact + GST */}
                       <div className="flex flex-wrap gap-4 text-sm">
                         <div className="flex items-center text-gray-400">
                           <Mail className="w-4 h-4 mr-2" />
                           {client.email}
                         </div>
                         <div className="flex items-center text-gray-400">
-                          <Phone className="w-4 h-4 mr-2" />
-                          {client.phone}
+                          <Receipt className="w-4 h-4 mr-2" />{" "}
+                          {/* 🔹 Changed icon for GST */}
+                          {client.company.gstNo}
                         </div>
                       </div>
-                      {client.address && (
+
+                      {/* Address */}
+                      {client.company.address && (
                         <div className="flex items-start text-gray-400 text-sm">
                           <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                          <span>{client.address}</span>
+                          <span>{client.company.address}</span>
+                        </div>
+                      )}
+
+                      {/* 🔹 Stats Section */}
+                      {client.stats && (
+                        <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                          <div className="flex items-center bg-gray-800 px-3 py-2 rounded-lg border border-gray-700">
+                            <FileText className="w-4 h-4 mr-2 text-blue-400" />
+                            <span className="text-gray-300">
+                              Total Invoices:{" "}
+                              <span className="text-white font-medium">
+                                {client.stats.totalInvoices || 0}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex items-center bg-gray-800 px-3 py-2 rounded-lg border border-gray-700">
+                            <Receipt className="w-4 h-4 mr-2 text-yellow-400" />
+                            <span className="text-gray-300">
+                              Pending:{" "}
+                              <span className="text-white font-medium">
+                                $
+                                {client.stats.pendingAmount
+                                  ? client.stats.pendingAmount.toLocaleString(
+                                      "en-IN",
+                                      {
+                                        minimumFractionDigits: 2,
+                                      }
+                                    )
+                                  : "0.00"}
+                              </span>
+                            </span>
+                          </div>
+                          <div className="flex items-center bg-gray-800 px-3 py-2 rounded-lg border border-gray-700">
+                            <Receipt className="w-4 h-4 mr-2 text-green-400" />
+                            <span className="text-gray-300">
+                              Paid:{" "}
+                              <span className="text-white font-medium">
+                                $
+                                {client.stats.paidAmount
+                                  ? client.stats.paidAmount.toLocaleString(
+                                      "en-IN",
+                                      {
+                                        minimumFractionDigits: 2,
+                                      }
+                                    )
+                                  : "0.00"}
+                              </span>
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
+
+                    {/* Status Badge */}
                     <div className="ml-4">
-                      <span className="px-3 py-1 bg-green-900 text-green-300 text-xs rounded-full">Active</span>
+                      <span className="px-3 py-1 bg-green-900 text-green-300 text-xs rounded-full">
+                        Active
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -113,6 +206,6 @@ const AllClients = () => {
       </div>
     </div>
   );
-}
+};
 
 export default AllClients;
