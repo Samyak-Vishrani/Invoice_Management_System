@@ -11,18 +11,22 @@ import {
 } from "lucide-react";
 import Cookies from "js-cookie";
 import axios from "axios";
-import { getAllInv } from "../../apis/invoice.apis.js";
+import { getAllInv, getInvStats, deleteInv } from "../../apis/invoice.apis.js";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal.jsx";
+import { toast } from "react-toastify";
 
 const AllInvoices = () => {
   const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     fetchInvoices();
-    // fetchStats();
+    fetchStats();
   }, []);
 
   const fetchInvoices = async () => {
@@ -38,31 +42,66 @@ const AllInvoices = () => {
       console.log("Invoice Data:\n ", response.data);
 
       setInvoices(response.data.data);
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching invoices:", error);
     }
   };
 
-  // const fetchStats = async () => {
-  //   try {
-  //     const response = await api.get('/invoice/stats');
-  //     setStats(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching stats:', error);
-  //   }
-  // };
+  const fetchStats = async () => {
+    try {
+      const token = Cookies.get("token");
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this invoice?")) {
-      try {
-        await api.delete(`/invoice/${id}`);
-        setInvoices(invoices.filter((inv) => inv._id !== id));
-        // fetchStats();
-      } catch (error) {
-        console.error("Error deleting invoice:", error);
-        alert("Failed to delete invoice");
-      }
+      const response = await axios.get(getInvStats, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Invoice Stats:\n ", response.data);
+
+      setStats(response.data.stats);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching invoice stats:", error);
+    }
+  };
+
+  const deleteClient = async (id) => {
+    try {
+      const token = Cookies.get("token");
+
+      const response = await axios.delete(`${deleteInv}/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Deleted Client:\n ", response.data);
+      toast.success("Invoice deleted successfully");
+
+    } catch (error) {
+      toast.error("Failed to delete invoice: " + error.response.data.message);
+      console.error("Error fetching invoice stats:", error);
+    }
+  };
+
+  const handleDeleteClick = (client) => {
+    console.log("Deleting item:", selectedItem);
+    setSelectedItem(client);
+    setIsModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteClient(selectedItem._id);
+      setIsModalOpen(false);
+            
+      setLoading(true);
+      fetchInvoices();
+      fetchStats();
+
+    } catch (error) {
+      console.error("Delete failed:", error);
     }
   };
 
@@ -118,21 +157,31 @@ const AllInvoices = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <p className="text-gray-400 text-sm">Total Invoices</p>
-              <p className="text-2xl font-bold text-white">{stats.total}</p>
+              <p className="text-2xl font-bold text-white">
+                {stats.summary.totalInvoices}
+              </p>
             </div>
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <p className="text-gray-400 text-sm">Paid</p>
-              <p className="text-2xl font-bold text-green-400">{stats.paid}</p>
+              <p className="text-2xl font-bold text-green-400">
+                {stats.summary.paidInvoices}
+              </p>
             </div>
             <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <p className="text-gray-400 text-sm">Pending</p>
               <p className="text-2xl font-bold text-yellow-400">
-                {stats.pending}
+                {stats.summary.pendingInvoices}
               </p>
             </div>
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            {/* <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <p className="text-gray-400 text-sm">Overdue</p>
-              <p className="text-2xl font-bold text-red-400">{stats.overdue}</p>
+              <p className="text-2xl font-bold text-red-400">{stats.summary.}</p>
+            </div> */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <p className="text-gray-400 text-sm">Drafts</p>
+              <p className="text-2xl font-bold text-gray-400">
+                {stats.summary.draftInvoices}
+              </p>
             </div>
           </div>
         )}
@@ -279,7 +328,7 @@ const AllInvoices = () => {
                             <Download className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(invoice._id)}
+                            onClick={() => handleDeleteClick(invoice)}
                             className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                             title="Delete"
                           >
@@ -295,6 +344,12 @@ const AllInvoices = () => {
           )}
         </div>
       </div>
+      <DeleteConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmDelete}
+        itemName={selectedItem?.invoiceNumber || "this item"}
+      />
     </div>
   );
 };

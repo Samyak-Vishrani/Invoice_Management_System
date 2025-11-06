@@ -2,6 +2,7 @@ const Invoice = require('../models/invoice-model');
 const Client = require('../models/client-model');
 const User = require('../models/user-model');
 const { sendInvoice } = require('./email-controller');
+const mongoose = require('mongoose');
 
 // Create new invoice
 const createInvoice = async (req, res) => {
@@ -309,13 +310,13 @@ const getInvoiceStats = async (req, res) => {
 
         // Basic counts by status
         const statusCounts = await Invoice.aggregate([
-            { $match: { userId: userId } },
+            { $match: { userId: new mongoose.Types.ObjectId(userId) } },
             { $group: { _id: '$status', count: { $sum: 1 } } }
         ]);
 
         // Financial stats
         const financialStats = await Invoice.aggregate([
-            { $match: { userId: userId } },
+            { $match: { userId: new mongoose.Types.ObjectId(userId) } },
             {
                 $group: {
                     _id: null,
@@ -332,7 +333,7 @@ const getInvoiceStats = async (req, res) => {
         const monthlyStats = await Invoice.aggregate([
             {
                 $match: {
-                    userId: userId,
+                    userId: new mongoose.Types.ObjectId(userId),
                     invoiceDate: {
                         $gte: new Date(`${currentYear}-01-01`),
                         $lt: new Date(`${currentYear + 1}-01-01`)
@@ -352,7 +353,7 @@ const getInvoiceStats = async (req, res) => {
 
         // Recent overdue invoices
         const overdueInvoices = await Invoice.find({
-            userId: userId,
+            userId: new mongoose.Types.ObjectId(userId),
             status: 'overdue'
         })
             .populate('clientId', 'name company')
