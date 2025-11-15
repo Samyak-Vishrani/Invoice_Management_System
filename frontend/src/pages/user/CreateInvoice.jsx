@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-// import api from '../../config/api';
 import { ArrowLeft, Plus, Trash2, FileText } from "lucide-react";
 import Cookies from "js-cookie";
 import axios from "axios";
@@ -8,6 +7,7 @@ import { createInv } from "../../apis/invoice.apis.js";
 import { getAllClients } from "../../apis/user.apis.js";
 import { generateInvoicePDF } from "../../apis/pdf.api.js";
 import { sendInvoice } from "../../apis/email.apis.js";
+import { toast } from "react-toastify";
 
 const CreateInvoice = () => {
   const navigate = useNavigate();
@@ -99,9 +99,10 @@ const CreateInvoice = () => {
       });
 
       console.log("Invoice Created:\n ", response.data);
-
+      setTimeout(toast.success("Invoice Created Successfully"), 1500);
       navigate("/user/invoices");
     } catch (err) {
+      toast.error("Failed to create invoice.");
       setError(err.response?.data?.message || "Failed to create invoice");
     } finally {
       setLoading(false);

@@ -12,6 +12,7 @@ import {
 import Cookies from "js-cookie";
 import axios from "axios";
 import { getAllClients } from "../../apis/user.apis.js";
+import { toast } from "react-toastify";
 
 const AllClients = () => {
   const location = useLocation();

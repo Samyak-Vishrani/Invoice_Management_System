@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { LayoutDashboard, FileText, DollarSign, Clock, LogOut, User, Eye } from 'lucide-react';
+import { LayoutDashboard, FileText, DollarSign, Clock, LogOut, User, Eye, Cookie } from 'lucide-react';
 import { getClientDashboard, getClientProfile } from "../../apis/client.apis.js";
 import Cookies from "js-cookie";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -46,7 +47,8 @@ const ClientDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('clientToken');
+    Cookies.remove("token");
+    Cookies.remove("role");
     navigate('/client/login');
   };
 
