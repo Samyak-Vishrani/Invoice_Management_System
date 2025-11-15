@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-// import api from '../../config/api';
+import { getEmailLogs } from '../../apis/email.apis';
 import { ArrowLeft, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
+import Cookies from "js-cookie";
+import axios from "axios";
 
 const EmailLogs = () => {
   const { invoiceId } = useParams();
@@ -14,12 +16,19 @@ const EmailLogs = () => {
 
   const fetchEmailLogs = async () => {
     try {
-    //   const response = await api.get(`/email/logs/${invoiceId}`);
-      setLogs(response.data);
-    } catch (error) {
-      console.error('Error fetching email logs:', error);
-    } finally {
+      const token = Cookies.get("token");
+
+      const response = await axios.get(`${getEmailLogs}/${invoiceId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Email Logs Data:\n ", response.data);
+      setLogs(response.data.emailLogs);
       setLoading(false);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
     }
   };
 
@@ -88,18 +97,18 @@ const EmailLogs = () => {
                         <div className="flex items-center space-x-3 mb-2">
                           <h3 className="text-lg font-semibold text-white">{log.type || 'Email'}</h3>
                           <span className={`px-3 py-1 text-xs rounded-full ${getStatusColor(log.status)}`}>
-                            {log.status}
+                            {log.status.charAt(0).toUpperCase() + log.status.slice(1).toLowerCase()}
                           </span>
                         </div>
                         <div className="space-y-1 text-sm">
                           <p className="text-gray-400">
-                            <span className="font-medium">To:</span> {log.recipient}
+                            <span className="font-bold">To: </span> {log.sentTo}
                           </p>
                           <p className="text-gray-400">
-                            <span className="font-medium">Subject:</span> {log.subject}
+                            <span className="font-bold">Subject: </span> {log.emailType.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join(' ')}
                           </p>
                           <p className="text-gray-400">
-                            <span className="font-medium">Sent at:</span>{' '}
+                            <span className="font-bold">Sent at: </span>{' '}
                             {log.sentAt ? new Date(log.sentAt).toLocaleString() : 'N/A'}
                           </p>
                           {log.error && (

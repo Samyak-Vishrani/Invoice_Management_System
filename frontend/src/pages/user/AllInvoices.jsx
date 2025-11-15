@@ -12,7 +12,9 @@ import {
 import Cookies from "js-cookie";
 import axios from "axios";
 import { getAllInv, getInvStats, deleteInv } from "../../apis/invoice.apis.js";
+import { generateInvoicePDF, downloadInvoicePDF } from "../../apis/pdf.api.js";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal.jsx";
+import GeneratePdfModal from "../../components/GeneratePdfModal.jsx";
 import { toast } from "react-toastify";
 
 const AllInvoices = () => {
@@ -23,6 +25,7 @@ const AllInvoices = () => {
   const [filter, setFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [isGeneratePdfModalOpen, setIsGeneratePdfModalOpen] = useState(false);
 
   useEffect(() => {
     fetchInvoices();
@@ -66,7 +69,7 @@ const AllInvoices = () => {
     }
   };
 
-  const deleteClient = async (id) => {
+  const deleteInvoice = async (id) => {
     try {
       const token = Cookies.get("token");
 
@@ -76,7 +79,7 @@ const AllInvoices = () => {
         },
       });
 
-      console.log("Deleted Client:\n ", response.data);
+      console.log("Deleted Invoice:\n ", response.data);
       toast.success("Invoice deleted successfully");
 
     } catch (error) {
@@ -85,15 +88,15 @@ const AllInvoices = () => {
     }
   };
 
-  const handleDeleteClick = (client) => {
+  const handleDeleteClick = (invoice) => {
     console.log("Deleting item:", selectedItem);
-    setSelectedItem(client);
+    setSelectedItem(invoice);
     setIsModalOpen(true);
   };
 
   const confirmDelete = async () => {
     try {
-      await deleteClient(selectedItem._id);
+      await deleteInvoice(selectedItem._id);
       setIsModalOpen(false);
             
       setLoading(true);
@@ -119,6 +122,77 @@ const AllInvoices = () => {
         return "bg-gray-700 text-gray-300";
     }
   };
+
+  const handleDownloadPDF = async (invoice) => {
+    setSelectedItem(invoice);
+    console.log("In handle DownloadPDF for invoice:", invoice);
+    
+    try {
+      const token = Cookies.get("token");
+
+      const response = await axios.get(
+        `${downloadInvoicePDF}/${invoice._id}`,
+        {
+          responseType: 'blob',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("PDF download response:\n ", response);
+      
+      const cd = response.headers['content-disposition'] || '';
+      let filename = `Invoice-${invoice._id}.pdf`;
+      const match = cd.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)/);
+      if (match && match[1]) filename = decodeURIComponent(match[1]);
+
+      // Create blob and trigger download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    
+    } catch (error) {
+      console.log('Error downloading PDF:', error);
+      if (error.response && error.response.status === 400) {
+        setIsGeneratePdfModalOpen(true);
+      } else {
+        toast.error("Failed to download PDF: " + error.response?.data?.message || error.message);
+      }
+    }
+  };
+
+  const handleGeneratePDF = async () => {
+    console.log("In handle GeneratePDF");
+    try {
+      const token = Cookies.get("token");
+
+      const response = await axios.post(
+        `${generateInvoicePDF}/${selectedItem._id}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("PDF generated successfully:\n ", response.data);
+      setIsGeneratePdfModalOpen(false);
+      setTimeout(toast.success("PDF generated successfully! Downloading now..."), 1200);
+      
+      // Trigger download after generation
+      await handleDownloadPDF();
+
+    }
+    catch (error) {
+      toast.error("Failed to generate PDF: " + error.response?.data?.message || error.message);
+    }
+  }
 
   const filteredInvoices =
     filter === "all"
@@ -299,29 +373,7 @@ const AllInvoices = () => {
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={async () => {
-                              try {
-                                const response = await api.get(
-                                  `/pdf/download/${invoice._id}`,
-                                  { responseType: "blob" }
-                                );
-                                const url = window.URL.createObjectURL(
-                                  new Blob([response.data])
-                                );
-                                const link = document.createElement("a");
-                                link.href = url;
-                                link.setAttribute(
-                                  "download",
-                                  `invoice-${invoice.invoiceNumber}.pdf`
-                                );
-                                document.body.appendChild(link);
-                                link.click();
-                                link.remove();
-                              } catch (error) {
-                                console.error("Error downloading PDF:", error);
-                                alert("Failed to download PDF");
-                              }
-                            }}
+                            onClick={() => handleDownloadPDF(invoice)}
                             className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                             title="Download PDF"
                           >
@@ -348,7 +400,12 @@ const AllInvoices = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onConfirm={confirmDelete}
-        itemName={selectedItem?.invoiceNumber || "this item"}
+        itemName={selectedItem?.invoiceNumber || "this invoice"}
+      />
+      <GeneratePdfModal
+        isOpen={isGeneratePdfModalOpen}
+        onClose={() => setIsGeneratePdfModalOpen(false)}
+        onConfirm={handleGeneratePDF}
       />
     </div>
   );

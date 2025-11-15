@@ -47,7 +47,7 @@ function App() {
       <div className="min-h-screen bg-gray-900">
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Navigate to="/user/register" />} />
+          <Route path="/" element={<Navigate to="/user/login" />} />
 
           {/* User Auth Routes */}
           <Route path="/user/register" element={<UserRegister />} />

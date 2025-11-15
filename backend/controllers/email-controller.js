@@ -6,6 +6,7 @@ const Client = require('../models/client-model');
 const transporter = require('../config/nodemailer');
 
 const sendInvoice = async (req, res) => {
+    console.log("In send invoice");
     try {
         const { invoiceId } = req.params;
         const { customMessage } = req.body;
@@ -140,7 +141,7 @@ const sendPaymentReminder = async (req, res) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #d32f2f;">Payment Reminder</h2>
         
-        <p>Dear ${invoice.clientId.name},</p>
+        <p>Dear ${invoice.clientId.company.name},</p>
         
         <p>${reminderMessages[reminderType]}</p>
         
@@ -197,7 +198,8 @@ const sendPaymentReminder = async (req, res) => {
 const sendPaymentConfirmation = async (req, res) => {
     try {
         const { invoiceId } = req.params;
-        const { paymentAmount, paymentMethod } = req.body;
+        const { paymentAmount, paymentMethod, transactionId } = req.body;
+        const userId = req.user.userId;
 
         const invoice = await Invoice.findById(invoiceId)
             .populate('userId', 'name email businessDetails')
@@ -210,13 +212,53 @@ const sendPaymentConfirmation = async (req, res) => {
             });
         }
 
+        if (!paymentAmount || paymentAmount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid payment amount'
+            });
+        }
+        if (!transactionId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid Transaction Id'
+            });
+        }
+
+        // Update the invoice status to 'paid'
+        // Use the model method to change status
+        // const status = invoice.remainingAmount - paymentAmount <= 0 ? 'paid' : 'partial_paid';
+        // const reason = `Payment of ₹${paymentAmount} received via ${paymentMethod}`;
+        // await invoice.changeStatus(status, {
+        //     userId: userId,
+        //     role: 'user'
+        // }, reason);
+        // invoice.status = 'paid';
+        // invoice.remainingAmount = 0; // Set remaining amount to 0
+        // await invoice.save(); // Save the updated invoice
+
+        // Add payment record (this saves the invoice and triggers pre-save recalculations)
+        const updatedInvoice = await invoice.addPayment(
+            { amount: paymentAmount, method: paymentMethod, transactionId, paidAt: new Date() },
+            { userId: userId, role: 'user' }
+        );
+
+        // If needed, ensure status is 'paid' when remainingAmount <= 0
+        if (updatedInvoice.remainingAmount <= 0 && updatedInvoice.status !== 'paid') {
+            await updatedInvoice.changeStatus('paid', { userId: userId, role: 'user' }, `Payment of ₹${paymentAmount} received`);
+        }
+
+        // Use the latest invoice state for email content and logging
+        await updatedInvoice.populate('userId', 'name businessDetails').execPopulate?.() || null;
+
+
         const subject = `Payment Received - Invoice ${invoice.invoiceNumber}`;
 
         const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #4caf50;">Payment Confirmation</h2>
         
-        <p>Dear ${invoice.clientId.name},</p>
+        <p>Dear ${invoice.clientId.company.name},</p>
         
         <p>Thank you! We have received your payment for Invoice ${invoice.invoiceNumber}.</p>
         
@@ -225,7 +267,8 @@ const sendPaymentConfirmation = async (req, res) => {
           <p><strong>Amount Received:</strong> ₹${paymentAmount}</p>
           <p><strong>Payment Method:</strong> ${paymentMethod}</p>
           <p><strong>Payment Date:</strong> ${new Date().toDateString()}</p>
-          <p><strong>Invoice Status:</strong> ${invoice.status}</p>
+          <p><strong>Old Invoice Status:</strong> ${invoice.status}</p>
+          <p><strong>Invoice Status:</strong> ${updatedInvoice.status}</p>
           ${invoice.remainingAmount > 0 ? `<p><strong>Remaining Balance:</strong> ₹${invoice.remainingAmount}</p>` : ''}
         </div>
         
@@ -252,7 +295,7 @@ const sendPaymentConfirmation = async (req, res) => {
         });
 
         return res.status(200).json({
-            success: false,
+            success: true,
             message: 'Payment confirmation sent successfully',
             emailId: info.messageId
         });

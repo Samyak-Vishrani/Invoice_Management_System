@@ -257,6 +257,9 @@ invoiceSchema.index({ clientId: 1, status: 1 });
 invoiceSchema.index({ dueDate: 1, status: 1 });
 
 invoiceSchema.pre("save", function (next) {
+
+  if (this._manualStatusUpdate) return next();
+
   // Calculate amounts before saving
   this.items = this.items.map((item) => ({
     ...item,

@@ -280,21 +280,70 @@ const downloadInvoicePDF = async (req, res) => {
 
     try {
         const { invoiceId } = req.params;
+        const userId = req.user.userId;
 
-        const invoice = await Invoice.findById(invoiceId);
+        let invoice = await Invoice.findById(invoiceId)        
+            .populate('userId', 'name businessDetails')
+            .populate('clientId', 'name company email');
+
+        console.log("Finding Invoice:");
         if (!invoice) {
             return res.status(404).json({
                 success: false,
                 message: 'Invoice not found'
             });
         }
+        
+        if (invoice.userId._id.toString() !== userId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: 'Unauthorized access'
+            });
+        }
 
         if (!invoice.pdfPath) {
-            return res.status(404).json({
+            return res.status(400).json({
                 success: false,
                 message: 'PDF not found. Generate PDF first.'
             });
         }
+        // if (!invoice.pdfPath) {
+        //     console.log('PDF not found, generating...');
+            
+        //     try {
+        //         // Create mock request and response for generateInvoicePDF
+        //         const generateReq = {
+        //             params: { invoiceId: invoice._id },
+        //             user: req.user
+        //         };
+
+        //         const generateRes = {
+        //             status: function(code) {
+        //                 this.statusCode = code;
+        //                 return this;
+        //             },
+        //             json: function(data) {
+        //                 if (data.success) {
+        //                     console.log('PDF generated successfully');
+        //                 }
+        //                 return this;
+        //             }
+        //         };
+
+        //         await generateInvoicePDF(generateReq, generateRes);
+
+        //         // Refresh invoice data to get updated pdfPath
+        //         invoice = await Invoice.findById(invoiceId);
+
+        //     } catch (generateError) {
+        //         console.error('Error generating PDF:', generateError);
+        //         return res.status(500).json({
+        //             success: false,
+        //             message: 'Failed to generate PDF',
+        //             error: generateError.message
+        //         });
+        //     }
+        // }
 
         const filepath = path.join(__dirname, '../', invoice.pdfPath);
 
@@ -305,6 +354,8 @@ const downloadInvoicePDF = async (req, res) => {
                 message: 'PDF file not found on server'
             });
         }
+
+        console.log("File exists, starting download");
 
         // Set headers for download
         res.setHeader('Content-Type', 'application/pdf');

@@ -277,6 +277,18 @@ const changeInvoiceStatus = async (req, res) => {
                 message: 'Invoice not found'
             });
         }
+        console.log('Current invoice status:', invoice.status);
+
+        // Update status
+        invoice.status = status;
+        if(["draft", "cancelled", "sent", "overdue"].includes(status)) {
+            invoice.payments = [];
+            invoice.totalPaid = 0;
+        }
+        // invoice._manualStatusUpdate = true;
+        await invoice.save();
+
+        console.log('Updated invoice status:', invoice.status);
 
         // Use the model method to change status
         await invoice.changeStatus(status, {
