@@ -280,24 +280,15 @@ const downloadInvoicePDF = async (req, res) => {
 
     try {
         const { invoiceId } = req.params;
-        const userId = req.user.userId;
 
         let invoice = await Invoice.findById(invoiceId)        
             .populate('userId', 'name businessDetails')
             .populate('clientId', 'name company email');
 
-        console.log("Finding Invoice:");
         if (!invoice) {
             return res.status(404).json({
                 success: false,
                 message: 'Invoice not found'
-            });
-        }
-        
-        if (invoice.userId._id.toString() !== userId.toString()) {
-            return res.status(403).json({
-                success: false,
-                message: 'Unauthorized access'
             });
         }
 
@@ -354,8 +345,6 @@ const downloadInvoicePDF = async (req, res) => {
                 message: 'PDF file not found on server'
             });
         }
-
-        console.log("File exists, starting download");
 
         // Set headers for download
         res.setHeader('Content-Type', 'application/pdf');

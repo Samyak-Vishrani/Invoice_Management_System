@@ -7,5 +7,6 @@ router.use(authMiddleware.clientMiddleware);
 
 router.get('/profile', userController.getClientProfile);
 router.get('/dashboard', userController.getClientDashboard);
+router.get('/clientinvoice/:id', userController.getClientInvoiceDetails);
 
 module.exports = router;

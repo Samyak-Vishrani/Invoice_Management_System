@@ -26,6 +26,7 @@ const ClientLogin = () => {
     setLoading(true);
 
     try {
+      console.log("Submitting login with data:", formData);
       const response = await axios.post(clientLogin, formData);
       console.log("Login successful:", response.data);
 
@@ -40,6 +41,7 @@ const ClientLogin = () => {
         navigate("/client/dashboard");
       }, 1500);
     } catch (err) {
+      console.error("Login failed:", err);
       toast.error(
         "Login Failed: " +
           (err.response?.data?.message || "Login failed")

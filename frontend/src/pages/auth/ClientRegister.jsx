@@ -10,6 +10,7 @@ import {
   MapPin,
   Receipt,
 } from "lucide-react";
+import Cookies from "js-cookie";
 import axios from "axios";
 import { toast } from "react-toastify";
 
@@ -27,8 +28,30 @@ const ClientRegister = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // const handleChange = (e) => {
+  //   setFormData({ ...formData, [e.target.name]: e.target.value });
+  // };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // Check if the input is a nested property (e.g., company.name)
+    if (name.includes(".")) {
+      const [parent, child] = name.split(".");
+      setFormData({
+        ...formData,
+        [parent]: {
+          ...formData[parent],
+          [child]: value,
+        },
+      });
+    } else {
+      // Handle top-level properties
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -37,21 +60,26 @@ const ClientRegister = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(clientRegister, formData);
+      const token = Cookies.get("token");
+      const response = await axios.post(clientRegister, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
       console.log("Client Regitration successful:", response.data);
 
       toast.success("Client Registration Successfull!");
       setTimeout(() => {
         navigate("/user/dashboard");
       }, 1500);
-
     } catch (err) {
       console.error("Client Regitration failed:", err);
       toast.error(
-        "Client Regitration Failed: " + (err.response?.data?.message || "Client Regitration failed")
+        "Client Regitration Failed: " +
+          (err.response?.data?.message || "Client Regitration failed")
       );
       setError(err.response?.data?.message || "Client Regitration failed");
-
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,3 @@
-// email logs and change status left
-
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
@@ -250,7 +248,7 @@ const InvoiceDetails = () => {
     catch (error) {
       toast.error("Failed to generate PDF: " + error.response?.data?.message || error.message);
     }
-  }
+  };
 
   // const handleRegeneratePDF = async () => {
   //   setActionLoading(true);

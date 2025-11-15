@@ -6,6 +6,8 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import { createInv } from "../../apis/invoice.apis.js";
 import { getAllClients } from "../../apis/user.apis.js";
+import { generateInvoicePDF } from "../../apis/pdf.api.js";
+import { sendInvoice } from "../../apis/email.apis.js";
 
 const CreateInvoice = () => {
   const navigate = useNavigate();
@@ -97,6 +99,8 @@ const CreateInvoice = () => {
       });
 
       console.log("Invoice Created:\n ", response.data);
+
+      navigate("/user/invoices");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create invoice");
     } finally {
@@ -291,7 +295,7 @@ const CreateInvoice = () => {
                       {(
                         (parseFloat(item.quantity) || 0) *
                         (parseFloat(item.rate) || 0)
-                      ).toFixed(2)}
+                      ).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                 ))}

@@ -11,6 +11,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Cookie,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import axios from "axios";
@@ -47,7 +48,8 @@ const UserDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("userToken");
+    Cookies.remove("token");
+    Cookies.remove("role");
     navigate("/user/login");
   };
 

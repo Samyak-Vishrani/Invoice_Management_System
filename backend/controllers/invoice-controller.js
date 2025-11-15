@@ -25,7 +25,7 @@ const createInvoice = async (req, res) => {
         const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount).padStart(4, '0')}`;
 
         // Create invoice
-        const invoice = new Invoice({
+        let invoice = new Invoice({
             userId,
             clientId,
             invoiceNumber,
@@ -44,9 +44,40 @@ const createInvoice = async (req, res) => {
 
         let emailSent = false;
         let emailError = null;
+        let pdfGenerated = false;
+
         // Automatically send invoice email if sendEmail is true
         if (sendEmail) {
+            console.log('Sending invoice email automatically after creation');
             try {
+                // Step 1: Generate PDF first
+                console.log('Step 1: Generating PDF...');
+                const { generateInvoicePDF } = require('./pdf-controller');
+                
+                const pdfReq = {
+                    params: { invoiceId: invoice._id },
+                    user: req.user
+                };
+                
+                const pdfRes = {
+                    status: function(code) {
+                        this.statusCode = code;
+                        return this;
+                    },
+                    json: function(data) {
+                        if (data.success) {
+                            console.log('PDF generated successfully:', data);
+                            pdfGenerated = true;
+                        }
+                        return this;
+                    }
+                };
+
+                await generateInvoicePDF(pdfReq, pdfRes);
+
+                // Refresh invoice to get updated pdfPath
+                await invoice.reload?.() || (invoice = await Invoice.findById(invoice._id));
+
                 // Create mock request and response objects for email controller
                 const emailReq = {
                     params: { invoiceId: invoice._id },
@@ -67,14 +98,13 @@ const createInvoice = async (req, res) => {
                 await sendInvoice(emailReq, emailRes);
                 emailSent = true;
 
-            } catch (emailError) {
+            } catch (err) {  // Changed from emailError to err
                 // Don't fail the whole request if email fails
                 emailSent = false;
-                emailError = error.message;
-                console.error('Failed to send invoice email:', emailError);
+                emailError = err.message;  // Changed from error.message to err.message
+                console.error('Failed to send invoice email:', err);
             }
         }
-
         return res.status(201).json({
             success: true,
             message: emailSent 

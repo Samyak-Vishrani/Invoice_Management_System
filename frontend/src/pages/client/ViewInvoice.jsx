@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-// import api from '../../config/api';
 import { ArrowLeft, Download, FileText, Building } from 'lucide-react';
+import { toast } from "react-toastify";
+import Cookies from "js-cookie";
+import axios from "axios";
+import { getClientInvoice } from "../../apis/client.apis.js";
+import { generateInvoicePDF, downloadInvoicePDF } from "../../apis/pdf.api.js";
+import GeneratePdfModal from "../../components/GeneratePdfModal.jsx";
 
 const ViewInvoice = () => {
   const { invoiceId } = useParams();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isGeneratePdfModalOpen, setIsGeneratePdfModalOpen] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
@@ -14,8 +20,17 @@ const ViewInvoice = () => {
 
   const fetchInvoice = async () => {
     try {
-    //   const response = await api.get(`/invoice/${invoiceId}`);
-      setInvoice(response.data);
+      const token = Cookies.get("token");
+
+      const response = await axios.get(`${getClientInvoice}/${invoiceId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Single Invoice Data:\n ", response.data);
+
+      setInvoice(response.data.data);
     } catch (error) {
       console.error('Error fetching invoice:', error);
     } finally {
@@ -25,16 +40,68 @@ const ViewInvoice = () => {
 
   const handleDownloadPDF = async () => {
     try {
-      const response = await api.get(`/pdf/view/${invoiceId}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `invoice-${invoice.invoiceNumber}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      const token = Cookies.get("token");
+
+      const response = await axios.get(
+        `${downloadInvoicePDF}/${invoiceId}`,
+        {
+          responseType: 'blob',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      const cd = response.headers['content-disposition'] || '';
+      let filename = `invoice-${invoiceId}.pdf`;
+      const match = cd.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)/);
+      if (match && match[1]) filename = decodeURIComponent(match[1]);
+
+      // Create blob and trigger download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    
     } catch (error) {
-      alert('Failed to download PDF');
+      console.log('Error downloading PDF:', error);
+      if (error.response && error.response.status === 400) {
+        setIsGeneratePdfModalOpen(true);
+      } else {
+        toast.error("Failed to download PDF: " + error.response?.data?.message || error.message);
+      }
+    }
+  };
+
+  const handleGeneratePDF = async () => {
+    console.log("In handle GeneratePDF");
+    try {
+      const token = Cookies.get("token");
+
+      const response = await axios.post(
+        `${generateInvoicePDF}/${invoiceId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("PDF generated successfully:\n ", response.data);
+      setIsGeneratePdfModalOpen(false);
+      setTimeout(toast.success("PDF generated successfully! Downloading now..."), 1200);
+      
+      // Trigger download after generation
+      await handleDownloadPDF();
+
+    }
+    catch (error) {
+      toast.error("Failed to generate PDF: " + error.response?.data?.message || error.message);
     }
   };
 
@@ -78,7 +145,7 @@ const ViewInvoice = () => {
               <FileText className="w-6 h-6 text-green-500" />
               <h1 className="text-2xl font-bold text-white">Invoice #{invoice.invoiceNumber}</h1>
               <span className={`px-3 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
-                {invoice.status}
+                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) || "N/A"}
               </span>
             </div>
             <button
@@ -93,13 +160,14 @@ const ViewInvoice = () => {
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Billed To</h3>
+                <h3 className="text-lg font-semibold text-white mb-3">Billed From</h3>
                 <div className="bg-gray-700 p-4 rounded-lg space-y-2">
-                  <p className="text-white font-medium text-lg">{invoice.client?.name}</p>
+                  <p className="text-white font-medium text-xl">{invoice.userId?.name}</p>
+                  <p className="text-white font-medium text-md">{invoice.userId?.businessDetails.companyName}</p>
                   <p className="text-gray-300">{invoice.client?.email}</p>
-                  <p className="text-gray-300">{invoice.client?.phone}</p>
-                  {invoice.client?.address && (
-                    <p className="text-gray-300">{invoice.client.address}</p>
+                  <p className="text-gray-300">{invoice.userId?.businessDetails.phone}</p>
+                  {invoice.userId?.businessDetails?.address && (
+                    <p className="text-gray-300">{invoice.userId?.businessDetails.address}</p>
                   )}
                 </div>
               </div>
@@ -113,7 +181,7 @@ const ViewInvoice = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Issue Date:</span>
-                    <span className="text-white">{new Date(invoice.issueDate).toLocaleDateString()}</span>
+                    <span className="text-white">{new Date(invoice.invoiceDate).toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Due Date:</span>
@@ -122,7 +190,7 @@ const ViewInvoice = () => {
                   <div className="flex justify-between pt-2 border-t border-gray-600">
                     <span className="text-gray-400 font-medium">Status:</span>
                     <span className={`px-3 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
-                      {invoice.status}
+                      {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) || "N/A"}
                     </span>
                   </div>
                 </div>
@@ -132,7 +200,7 @@ const ViewInvoice = () => {
             <div>
               <h3 className="text-lg font-semibold text-white mb-3">Invoice Items</h3>
               <div className="bg-gray-700 rounded-lg overflow-hidden">
-                <table className="w-full">
+                <table className="w-full border border-gray-500">
                   <thead className="bg-gray-600">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Description</th>
@@ -141,26 +209,76 @@ const ViewInvoice = () => {
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-600">
+                  <tbody className="divide-y divide-gray-600 border border-gray-600">
                     {invoice.items?.map((item, index) => (
                       <tr key={index}>
                         <td className="px-4 py-3 text-gray-300">{item.description}</td>
                         <td className="px-4 py-3 text-center text-gray-300">{item.quantity}</td>
-                        <td className="px-4 py-3 text-right text-gray-300">${item.price?.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right text-white font-semibold">
-                          ${(item.quantity * item.price).toFixed(2)}
-                        </td>
+                        <td className="px-4 py-3 text-right text-gray-300">${item.rate?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}</td>
+                        <td className="px-4 py-3 text-right text-white font-semibold"> ${item.amount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}</td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot className="bg-gray-700/60 text-[15px]">
+                    {/* Subtotal */}
+                    <tr>
+                      <td colSpan="3" className="px-6 py-3 text-right text-gray-300 font-medium" >
+                        Subtotal
+                      </td>
+                      <td className="px-6 py-3 text-right text-white font-semibold">
+                        $
+                        {invoice.subtotal?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}
+                      </td>
+                    </tr>
+
+                    {/* Tax */}
+                    <tr>
+                      <td colSpan="3" className="px-6 py-3 text-right text-gray-300 font-medium" >
+                        Tax
+                      </td>
+                      <td className="px-6 py-3 text-right text-white font-semibold">
+                        $
+                        {invoice.taxAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}
+                      </td>
+                    </tr>
+
+                    {/* Discount */}
+                    {invoice.discountAmount > 0 && (
+                      <tr>
+                        <td colSpan="3" className="px-6 py-3 text-right text-gray-300 font-medium" >
+                          Discount
+                        </td>
+                        <td className="px-6 py-3 text-right text-green-400 font-semibold">
+                          − $
+                          {invoice.discountAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}
+                        </td>
+                      </tr>
+                    )}
+                    {/* Grand Total */}
+                    <tr className="bg-gray-800 border-t border-gray-600">
+                      <td colSpan="3" className="px-6 py-4 text-right text-lg font-bold text-white" >
+                        Total
+                      </td>
+                      <td className="px-6 py-4 text-right text-lg font-bold text-blue-400">
+                        $
+                        {invoice.totalAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
 
             <div className="bg-gradient-to-r from-green-900 to-green-800 p-6 rounded-lg border border-green-700">
               <div className="flex justify-between items-center">
+                <span className="text-xl font-semibold text-white">Total Amount Paid:</span>
+                <span className="text-3xl font-bold text-white">${invoice.totalPaid?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}</span>
+              </div>
+            </div>
+            <div className="bg-gradient-to-r from-red-900 to-red-800 p-6 rounded-lg border border-red-700">
+              <div className="flex justify-between items-center">
                 <span className="text-xl font-semibold text-white">Total Amount Due:</span>
-                <span className="text-3xl font-bold text-white">${invoice.total?.toFixed(2)}</span>
+                <span className="text-3xl font-bold text-white">${invoice.remainingAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2, })}</span>
               </div>
             </div>
 
@@ -173,7 +291,7 @@ const ViewInvoice = () => {
               </div>
             )}
 
-            {invoice.status?.toLowerCase() === 'pending' && (
+            {invoice.status?.toLowerCase() === 'pending' || invoice.status?.toLowerCase() === 'sent' && (
               <div className="bg-yellow-900/30 border border-yellow-700 p-4 rounded-lg">
                 <p className="text-yellow-300 text-center">
                   ⚠️ This invoice is pending payment. Please make the payment before the due date.
@@ -199,6 +317,11 @@ const ViewInvoice = () => {
           </div>
         </div>
       </div>
+      <GeneratePdfModal
+        isOpen={isGeneratePdfModalOpen}
+        onClose={() => setIsGeneratePdfModalOpen(false)}
+        onConfirm={handleGeneratePDF}
+      />
     </div>
   );
 }

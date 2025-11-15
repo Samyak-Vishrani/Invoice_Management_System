@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// import api from '../../config/api';
 import { LayoutDashboard, FileText, DollarSign, Clock, LogOut, User, Eye } from 'lucide-react';
+import { getClientDashboard, getClientProfile } from "../../apis/client.apis.js";
+import Cookies from "js-cookie";
+import axios from "axios";
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const daysUntil = (dueDate) => {
+    if (!dueDate) return Infinity;
+    const now = new Date();
+    const due = new Date(dueDate);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfDue = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    const diffMs = startOfDue - startOfToday;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  };
 
   useEffect(() => {
     fetchDashboard();
@@ -14,8 +26,18 @@ const ClientDashboard = () => {
 
   const fetchDashboard = async () => {
     try {
-    //   const response = await api.get('/client/dashboard');
-      setDashboard(response.data);
+      const token = Cookies.get("token");
+      console.log("Token: ", token);
+
+      const response = await axios.get(getClientDashboard, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Client Dashboard Data:", response.data);
+      
+      setDashboard(response.data.data);
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
@@ -83,7 +105,7 @@ const ClientDashboard = () => {
               </div>
             </div>
             <p className="text-gray-400 text-sm mb-1">Total Invoices</p>
-            <p className="text-3xl font-bold text-white">{dashboard?.totalInvoices || 0}</p>
+            <p className="text-3xl font-bold text-white">{dashboard?.stats.totalInvoices || 0}</p>
           </div>
 
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -93,7 +115,7 @@ const ClientDashboard = () => {
               </div>
             </div>
             <p className="text-gray-400 text-sm mb-1">Pending Payment</p>
-            <p className="text-3xl font-bold text-white">${dashboard?.pendingAmount?.toFixed(2) || '0.00'}</p>
+            <p className="text-3xl font-bold text-white">${dashboard?.stats.pendingAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>
           </div>
 
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -103,16 +125,16 @@ const ClientDashboard = () => {
               </div>
             </div>
             <p className="text-gray-400 text-sm mb-1">Total Paid</p>
-            <p className="text-3xl font-bold text-white">${dashboard?.paidAmount?.toFixed(2) || '0.00'}</p>
+            <p className="text-3xl font-bold text-white">${dashboard?.stats.totalAmountPaid?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}</p>
           </div>
         </div>
 
-        <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden mb-8">
           <div className="px-6 py-4 bg-gray-700 border-b border-gray-600">
             <h2 className="text-xl font-bold text-white">Recent Invoices</h2>
           </div>
 
-          {!dashboard?.invoices || dashboard.invoices.length === 0 ? (
+          {!dashboard?.recentInvoices || dashboard.recentInvoices.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <p className="text-gray-400 text-lg">No invoices found</p>
@@ -123,23 +145,27 @@ const ClientDashboard = () => {
                 <thead className="bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Invoice #</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">From</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Remaining Amount</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Due Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {dashboard.invoices.map((invoice) => (
+                  {dashboard.recentInvoices.map((invoice) => (
                     <tr key={invoice._id} className="hover:bg-gray-750">
                       <td className="px-6 py-4 text-white font-medium">{invoice.invoiceNumber}</td>
-                      <td className="px-6 py-4 text-white font-semibold">${invoice.total?.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-white font-medium">{invoice.userId.businessDetails.companyName}</td>
+                      <td className="px-6 py-4 text-white font-semibold">${invoice.totalAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-6 py-4 text-white font-semibold">${invoice.remainingAmount?.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="px-6 py-4 text-gray-300">
                         {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 text-xs rounded-full ${getStatusColor(invoice.status)}`}>
-                          {invoice.status || 'N/A'}
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) || 'N/A'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -158,6 +184,59 @@ const ClientDashboard = () => {
             </div>
           )}
         </div>
+        {/* Upcoming Due Dates (uses backend data) */}
+        <div className="md:col-span-3">
+          <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+            <div className="flex items-center justify-between mb-4 ">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-yellow-600 rounded-lg">
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Upcoming Due Dates</h3>
+              </div>
+              <div className="text-sm text-gray-400">{(dashboard.upcomingDueDates || []).length} items</div>
+            </div>
+
+            {(!dashboard.upcomingDueDates || dashboard.upcomingDueDates.length === 0) ? (
+              <div className="text-center py-6 text-gray-400">No upcoming due dates</div>
+            ) : (
+              <ul className="space-y-3">
+                {dashboard.upcomingDueDates.map(invoice => {
+                  const du = daysUntil(invoice.dueDate);
+                  const badgeClass =
+                    du < 0 ? 'bg-red-600 text-white' :
+                    du <= 3 ? 'bg-yellow-600 text-white' :
+                    'bg-green-600 text-white';
+
+                  return (
+                    <li key={invoice._id} className="flex items-center justify-between bg-gray-700 rounded-lg p-3 border border-gray-600">
+                      <div>
+                        <div className="text-white font-medium">{invoice.invoiceNumber} • {invoice.userId?.businessDetails?.companyName}</div>
+                        <div className="text-sm text-gray-400">${(invoice.remainingAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className={`px-3 py-1 rounded-full text-sm ${badgeClass} mr-8`}>
+                          {du < 0 ? `Overdue ${Math.abs(du)}d` : du === 0 ? 'Due today' : `Due in ${du}d`}
+                        </div>
+                        <div>
+                        <Link
+                          to={`/client/invoice/${invoice._id}`}
+                          className="inline-flex items-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                          >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Link>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

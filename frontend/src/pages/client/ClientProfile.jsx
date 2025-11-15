@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-// import api from '../../config/api';
 import { User, Mail, Phone, MapPin, ArrowLeft } from 'lucide-react';
+import Cookies from "js-cookie";
+import axios from "axios";
+import { getClientProfile } from "../../apis/client.apis.js";
+import { toast } from 'react-toastify';
 
 const ClientProfile = () => {
   const [profile, setProfile] = useState(null);
@@ -13,9 +16,19 @@ const ClientProfile = () => {
 
   const fetchProfile = async () => {
     try {
-    //   const response = await api.get('/client/profile');
-      setProfile(response.data);
+      const token = Cookies.get("token");
+      console.log("Token: ", token);
+
+      const response = await axios.get(getClientProfile, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("Client Profile Data:", response.data);
+
+      setProfile(response.data.data);
     } catch (error) {
+      toast.error('Failed to fetch profile data.');
       console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
@@ -45,7 +58,7 @@ const ClientProfile = () => {
                 <User className="w-10 h-10 text-green-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white">{profile?.name}</h1>
+                <h1 className="text-3xl font-bold text-white">{profile?.company.name}</h1>
                 <p className="text-green-100">Client Account</p>
               </div>
             </div>
@@ -56,7 +69,7 @@ const ClientProfile = () => {
               <label className="block text-sm font-medium text-gray-400 mb-2">Full Name</label>
               <div className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg">
                 <User className="w-5 h-5 text-gray-400" />
-                <span className="text-white text-lg">{profile?.name}</span>
+                <span className="text-white text-lg">{profile?.company.name}</span>
               </div>
             </div>
 
@@ -69,22 +82,13 @@ const ClientProfile = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">Phone Number</label>
-              <div className="flex items-center space-x-3 p-4 bg-gray-700 rounded-lg">
-                <Phone className="w-5 h-5 text-gray-400" />
-                <span className="text-white text-lg">{profile?.phone}</span>
+              <label className="block text-sm font-medium text-gray-400 mb-2">Address</label>
+              <div className="flex items-start space-x-3 p-4 bg-gray-700 rounded-lg">
+                <MapPin className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
+                <span className="text-white text-lg">{profile.company.address}</span>
               </div>
             </div>
-
-            {profile?.address && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Address</label>
-                <div className="flex items-start space-x-3 p-4 bg-gray-700 rounded-lg">
-                  <MapPin className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
-                  <span className="text-white text-lg">{profile.address}</span>
-                </div>
-              </div>
-            )}
+          
 
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">Account Created</label>
