@@ -313,6 +313,7 @@ const sendPaymentConfirmation = async (req, res) => {
 const sendBulkReminders = async (req, res) => {
     try {
         const { invoiceIds, reminderType = 'gentle' } = req.body;
+        const userID = req.user.userId;
 
         if (!invoiceIds || invoiceIds.length === 0) {
             return res.status(400).json({
@@ -326,7 +327,11 @@ const sendBulkReminders = async (req, res) => {
 
         for (const invoiceId of invoiceIds) {
             try {
-                const invoice = await Invoice.findById(invoiceId)
+                const invoice = await Invoice.findOne({
+                    _id: invoiceId,
+                    userId: userID,
+                    status: { $in: ['sent', 'overdue', 'partial_paid', 'viewed'] }
+                })
                     .populate('userId', 'name email businessDetails')
                     .populate('clientId', 'name email company');
 
@@ -346,7 +351,7 @@ const sendBulkReminders = async (req, res) => {
                 const htmlContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #d32f2f;">Payment Reminder</h2>
-            <p>Dear ${invoice.clientId.name},</p>
+            <p>Dear ${invoice.clientId.company.name},</p>
             <p>${reminderMessages[reminderType]}</p>
             <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; margin: 20px 0;">
               <h3>Outstanding Invoice:</h3>

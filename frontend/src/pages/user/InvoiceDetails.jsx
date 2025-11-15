@@ -17,7 +17,6 @@ import {
   sendInvoice,
   sendPaymentReminder,
   sendPaymentConfirmation,
-  sendBulkReminders,
 } from "../../apis/email.apis.js";
 import { changeInvStatus } from "../../apis/invoice.apis.js";
 import { generateInvoicePDF, downloadInvoicePDF } from "../../apis/pdf.api.js";

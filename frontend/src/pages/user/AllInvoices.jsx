@@ -8,9 +8,11 @@ import {
   Download,
   Trash2,
   Filter,
+  Mail
 } from "lucide-react";
 import Cookies from "js-cookie";
 import axios from "axios";
+import { sendBulkReminders } from "../../apis/email.apis.js";
 import { getAllInv, getInvStats, deleteInv } from "../../apis/invoice.apis.js";
 import { generateInvoicePDF, downloadInvoicePDF } from "../../apis/pdf.api.js";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal.jsx";
@@ -26,11 +28,30 @@ const AllInvoices = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isGeneratePdfModalOpen, setIsGeneratePdfModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
     fetchInvoices();
     fetchStats();
   }, []);
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+      setSelectAll(false);
+    } else {
+      setSelectedIds(invoices.map((inv) => inv._id));
+      setSelectAll(true);
+    }
+  };
 
   const fetchInvoices = async () => {
     try {
@@ -194,6 +215,37 @@ const AllInvoices = () => {
     }
   }
 
+  const handleSendBulkReminders = async () => {
+    console.log("In handle Send Bulk Reminders");
+    try {
+      setIsActive(true);
+      if (selectedIds.length === 0) {
+        toast.error("Please select at least one invoice to send reminders.");
+        setIsActive(false);
+        return;
+      }
+      const token = Cookies.get("token");
+      const body = { invoiceIds: selectedIds };
+
+      const response = await axios.post(
+        `${sendBulkReminders}`,
+        body,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log("Bulk reminders sent:\n ", response.data);
+      setIsActive(false);
+      toast.success("Bulk payment reminders sent successfully!");
+    }
+    catch(err) {
+      setIsActive(false);
+      toast.error("Failed to send bulk reminders: " + err.response?.data?.message || err.message);
+    }
+  }
+
   const filteredInvoices =
     filter === "all"
       ? invoices
@@ -271,7 +323,7 @@ const AllInvoices = () => {
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="px-3 py-2 bg-gray-600 text-white rounded-lg border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 mr-4 bg-gray-600 text-white rounded-lg border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
                 <option value="paid">Paid</option>
@@ -279,6 +331,20 @@ const AllInvoices = () => {
                 <option value="overdue">Overdue</option>
                 <option value="draft">Draft</option>
               </select>
+              <button
+                onClick={handleSendBulkReminders}
+                disabled={isActive}
+                // className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                className={`inline-flex items-center px-4 py-2 rounded-lg transition-colors text-white
+                  ${isActive 
+                    ? "bg-gray-600 cursor-not-allowed opacity-60"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                  }`}
+                title="Send Bulk Reminders"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Send Bulk Reminders
+              </button>
             </div>
           </div>
 
@@ -308,6 +374,15 @@ const AllInvoices = () => {
               <table className="w-full">
                 <thead className="bg-gray-700">
                   <tr>
+                    <th className="px-6 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectAll}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-500 rounded"
+                        title="Select all invoices"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase">
                       Invoice #
                     </th>
@@ -331,6 +406,14 @@ const AllInvoices = () => {
                 <tbody className="divide-y divide-gray-700">
                   {filteredInvoices.map((invoice) => (
                     <tr key={invoice._id} className="hover:bg-gray-750">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(invoice._id)}
+                          onChange={() => toggleSelectOne(invoice._id)}
+                          className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-500 rounded"
+                        />
+                      </td>
                       <td className="px-6 py-4 text-white font-medium">
                         {invoice.invoiceNumber}
                       </td>
