@@ -1,3 +1,9 @@
+// import dns from "dns";
+// const dns = require('dns');
+
+// // MUST be first line
+// dns.setDefaultResultOrder("ipv4first");
+
 require('dotenv').config();
 const express = require('express');
 const app = express();
@@ -46,4 +52,4 @@ mongoose.connect(process.env.MONGODB_URI)
             console.log(`Server running on PORT ${process.env.PORT}`);
         })
     })
-    .catch((err) => console.log(`DB Connection error: ${err}`));
+    .catch((err) => console.error(`DB Connection error: ${err}`));

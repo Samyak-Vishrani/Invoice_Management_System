@@ -41,7 +41,27 @@ const UserRegister = () => {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    if (name.includes(".")) {
+      // Handle nested properties
+      const keys = name.split(".");
+      setFormData((prev) => {
+        const updated = { ...prev };
+        let current = updated;
+        
+        for (let i = 0; i < keys.length - 1; i++) {
+          current[keys[i]] = { ...current[keys[i]] };
+          current = current[keys[i]];
+        }
+        
+        current[keys[keys.length - 1]] = value;
+        return updated;
+      });
+    } else {
+      // Handle top-level properties
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSubmit = async (e) => {
